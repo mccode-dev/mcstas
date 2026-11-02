@@ -1,8 +1,8 @@
 Hi there,
 
-This is the basis of the mcstas website at 
+This is the basis of the mcstas websites at 
 
-https://www.mcstas.org
+https://www.mcstas.org and https://mccode-dev.github.io/mcstas.org.web/
 
 In this folder there are 
 
