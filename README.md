@@ -2,7 +2,7 @@ Hi there,
 
 This is the basis of the mcstas websites at 
 
-https://www.mcstas.org and https://mccode-dev.github.io/mcstas.org.web/
+https://www.mcstas.org and https://mccode-dev.github.io/mcstas/
 
 In this folder there are 
 
