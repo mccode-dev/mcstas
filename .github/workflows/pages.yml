@@ -16,6 +16,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  FLAVOR: mcstas  # mcstas | mcxtrace
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -37,20 +40,24 @@ jobs:
 
       - uses: mamba-org/setup-micromamba@v2
         with:
-          environment-name: mcstas
-          create-args: mcstas-core
+          environment-name: mccode
+          create-args: ${{ env.FLAVOR }}-core
           condarc: |
             channels: [conda-forge]
 
       - name: Component docs (mcdoc)
         shell: bash -el {0}
+        env:
+          BASE: ${{ steps.pages.outputs.base_path }}
         run: |
-          mcdoc -i | tail -5
-          doc=$CONDA_PREFIX/share/doc/mcstas lib=$CONDA_PREFIX/share/mcstas/resources
-          du -sh "$doc" "$doc"/* | sort -h | tail -15; find "$doc" -name '*.pdf' | head
-          grep -rhoE '(href|src)="file://[^"]*' "$doc" | sed -E 's#/[^/]*$##' | sort | uniq -c | sort -rn | head -20
-          grep -oE 'href="[^"#]*' "$doc/mcdoc.html" | sort | uniq -c | sort -rn | head -8
-          f=$(find "$doc" -name Arm.html); echo $f; grep -oE '(href|src)="[^"#]*' $f | sort -u
+          mcdoc -i > /dev/null
+          ver=$(basename "$CONDA_PREFIX"/conda-meta/${FLAVOR}-core-*.json | cut -d- -f3)
+          out=_site/download/components/current
+          mkdir -p $out && cp -R "$CONDA_PREFIX/share/doc/$FLAVOR"/. $out/
+          grep -rl 'file://' $out --include='*.html' | xargs -r sed -i \
+            -e "s#file://$CONDA_PREFIX/share/doc/$FLAVOR#$BASE/download/components/current#g" \
+            -e "s#file://$CONDA_PREFIX/share/$FLAVOR/resources#https://github.com/mccode-dev/McCode/tree/v$ver/$FLAVOR-comps#g"
+          echo "mcdoc for $FLAVOR $ver: $(du -sh $out | cut -f1)"
 
       - uses: actions/upload-pages-artifact@v4
         with:
