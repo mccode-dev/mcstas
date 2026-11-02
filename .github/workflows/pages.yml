@@ -51,9 +51,9 @@ jobs:
           ver=$(basename "$CONDA_PREFIX"/conda-meta/${FLAVOR}-core-*.json | cut -d- -f3)
           out=contents/download/components/current
           mkdir -p $out && cp -R "$CONDA_PREFIX/share/doc/$FLAVOR"/. $out/
-          grep -rl 'file://' $out --include='*.html' | xargs -r sed -i \
-            -e "s#file://$CONDA_PREFIX/share/doc/$FLAVOR#/download/components/current#g" \
-            -e "s#file://$CONDA_PREFIX/share/$FLAVOR/resources#https://github.com/mccode-dev/McCode/tree/v$ver/$FLAVOR-comps#g"
+          grep -rl "$CONDA_PREFIX" $out --include='*.html' | xargs -r sed -i -E \
+            -e "s#(file://)?$CONDA_PREFIX/share/doc/$FLAVOR#/download/components/current#g" \
+            -e "s#(file://)?$CONDA_PREFIX/share/$FLAVOR/resources#https://github.com/mccode-dev/McCode/tree/v$ver/$FLAVOR-comps#g"
           echo "mcdoc for $FLAVOR $ver: $(du -sh $out | cut -f1)"
 
       - name: Build site
