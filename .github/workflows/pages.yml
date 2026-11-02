@@ -1,0 +1,50 @@
+name: pages
+
+# Static build of the website for GitHub Pages, replacing the server-side
+# post-merge hook (createweb.pl + Apache SSI).
+on:
+  push:
+    branches: [main, gh-pages-draft]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0     # full history for the "Last Modified" dates...
+          filter: blob:none  # ...without downloading old file versions
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Manual page
+        working-directory: contents/documentation/manual
+        run: perl constructpage.pl "$(cat ../../download/current)" > manual.html
+
+      - name: Build site
+        run: perl tools/createweb.pl -c contents -s specialcontents -l layout -w _site -p "${{ steps.pages.outputs.base_path }}"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

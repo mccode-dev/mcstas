@@ -2,7 +2,7 @@
 my $pwd;
 my $release = $ARGV[0];
 
-$pwd="/home/mcstas/Builds/checkout/web/contents/documentation/manual/";
+use Cwd; $pwd = cwd() . "/";  # run from this directory
 opendir(DIR, $pwd);
 @files = grep(/\.ps\.gz$|\.pdf$/,readdir(DIR));
 @manufiles = grep(/$release-manual/,@files);

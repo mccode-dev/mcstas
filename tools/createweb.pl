@@ -32,6 +32,7 @@ $VERBOSE = "";
 &contoweb();
 &makelists();
 &makemenu();
+&resolvessi();
 
 sub getenv {
 #
@@ -146,7 +147,7 @@ sub scontoweb {
 	next if ($name eq "..");
 	
 	if (-d "$scon/$name" and $name !~ m|CVS|) {
-	    system("ln -s $VERBOSE $scon/$name $web/$name");
+	    system("cp -R $VERBOSE $scon/$name $web/$name");
 	    next;
 	}
     }
@@ -250,8 +251,8 @@ EOF
     }
 
 &scancon($con);
-print "Adding final /index.html via ln -s \n";
-system("cd $web && ln -s $VERBOSE main.html index.html");
+print "Adding final /index.html via cp \n";
+system("cd $web && cp $VERBOSE main.html index.html");
 }
 
 sub makemenu {
@@ -575,6 +576,66 @@ sub makelists {
     }
 
 &scanweb($web);
+}
+
+# Local patch for static hosting (GitHub Pages): no Apache SSI there, so
+# inline the SSI directives into every .html file and put the URL prefix
+# (-p, e.g. "/mcstas.org.web" for a project page, "" for a custom domain)
+# in front of root-absolute links.
+sub resolvessi {
+    use File::Find;
+    use File::Basename;
+
+    sub slurp {
+	my ($f) = @_;
+	open(my $fh, "<", $f) or return "";
+	local $/;
+	my $s = <$fh>;
+	close $fh;
+	return $s;
+    }
+
+    sub ssipath {
+	my ($p, $dir) = @_;
+	return ($p =~ m|^/|) ? "$web$p" : "$dir/$p";
+    }
+
+    # Date of last commit touching the source file, else file mtime
+    sub lastmod {
+	my ($f) = @_;
+	(my $src = $f) =~ s|^$web|$con|;
+	$src =~ s|\.pure\.html\Z|.html|;
+	my $d = `git -C "$con" log -1 --format=%cd --date=format:'%A, %d-%b-%Y %H:%M:%S' -- "$src" 2>/dev/null`;
+	chomp $d;
+	return $d if $d ne "";
+	return -e $f ? scalar localtime((stat $f)[9]) : "";
+    }
+
+    sub ssi {
+	my ($s, $dir) = @_;
+	$s =~ s{<!--#include\s+(?:virtual|file)="([^"]*)"\s*-->}{my $p = ssipath($1, $dir); ssi(slurp($p), dirname($p))}ge;
+	$s =~ s{<!--#exec\s+cmd="test -f (\S+) && cat \S+"\s*-->}{ssi(slurp("$dir/$1"), $dir)}ge;
+	$s =~ s{<!--#flastmod\s+(?:virtual|file)="([^"]*)"\s*-->}{lastmod(ssipath($1, $dir))}ge;
+	$s =~ s{<!--#(?:config|endif)[^>]*-->}{}g;
+	return $s;
+    }
+
+    print "Resolving SSI, URL prefix '$prefix'\n";
+    # Compute everything before writing anything, so included files
+    # (header.html etc.) are never read back already rewritten
+    my %out;
+    find({ no_chdir => 1, wanted => sub {
+	return unless -f $_ and not -l $_ and m/\.html\Z/;
+	my $s = slurp($_);
+	$s = ssi($s, dirname($_)) if $s =~ m/<!--#/;
+	$s =~ s{\b(href|src|action)=(["']?)/(?!/)}{$1=$2$prefix/}gi if $prefix ne "";
+	$out{$_} = $s;
+    }}, $web);
+    foreach my $f (keys %out) {
+	open(my $fh, ">", $f) or die("Unable to write to $f: $!\n");
+	print $fh $out{$f};
+	close $fh;
+    }
 }
 
 # --------------------------------
