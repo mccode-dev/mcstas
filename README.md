@@ -11,3 +11,7 @@ In this folder there are
 * specialcontents/ - "other" webpages, i.e. html/and other stuff not to be parsed by createweb.pl,
                     but to be copied directly to the webserver's DocumentRoot
 
+
+GitHub Pages: .github/workflows/pages.yml builds the same site statically with
+tools/createweb.pl (a copy of geekclubdk/createweb, patched to inline the SSI
+directives and to prefix root links for project-page hosting).
