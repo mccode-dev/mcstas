@@ -35,6 +35,22 @@ jobs:
       - name: Build site
         run: perl tools/createweb.pl -c contents -s specialcontents -l layout -w _site -p "${{ steps.pages.outputs.base_path }}"
 
+      - uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: mcstas
+          create-args: mcstas-core
+          condarc: |
+            channels: [conda-forge]
+
+      - name: Component docs (mcdoc)
+        shell: bash -el {0}
+        run: |
+          mcdoc -i | tail -5
+          doc=$(dirname "$(find "$CONDA_PREFIX" -name mcstasdoc.html | head -1)")
+          lib=$(dirname "$(dirname "$(find "$CONDA_PREFIX" -name Arm.comp | head -1)")")
+          echo "doc=$doc lib=$lib"; du -sh "$doc" "$lib"; ls "$doc" "$lib"
+          grep -rhoE 'href="file://[^"]*' "$doc" | sed -E 's#/[^/]*$##' | sort | uniq -c | sort -rn | head -20
+
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
